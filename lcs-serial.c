@@ -130,32 +130,51 @@ FILE *openFile(char *fname){
 }
 
 data readFile(char *fname){
-	int N=0, M=0, aux=0, i=0;
-	char string[1024];
+	int N=0, M=0;
 	FILE *pFile=NULL;
 	data newData;
 	
 	pFile = openFile(fname);
-	while(fgets(string, 1024, pFile) != NULL){
-		if(sscanf(string, "%d %d\n", &N, &M) == 2){
-			newData.matrix = createMatrix(N, M);
-			newData.rows = createVector(N);
-			newData.columns = createVector(M);
-			newData.N = N;
-			newData.M = M;
-		}else{
-			if(aux == 0){
-				for(i=0; i<N; i++){
-					newData.rows[i] = string[i];
-				}
-				aux++;
-			}else{
-				for(i=0; i<M; i++){
-					newData.columns[i] = string[i];
-				}
-			}
-		}
-	}
+	if(fscanf(pFile, "%d %d", &N, &M) != 2){
+    printf("ERROR => Reading variables from file!!!\n");
+    fclose(pFile);
+    exit(-1); 
+  }
+  if(fscanf(pFile, "\n") != 0){
+  	printf("ERROR => Reading EOF from file!!!\n");
+    fclose(pFile);
+    exit(-1);
+  }
+  
+  newData.rows = createVector(N);
+  newData.columns = createVector(M);
+  
+  if(fread(newData.rows, 1, N, pFile) != N){
+    printf("ERROR => Reading information from file!!!\n");
+    fclose(pFile);
+    free(newData.rows);
+    free(newData.columns);
+    exit(-1); 
+  }
+  if(fscanf(pFile, "\n") != 0){
+  	printf("ERROR => Reading EOF from file!!!\n");
+    free(newData.rows);
+    free(newData.columns);
+    fclose(pFile);
+    exit(-1);
+  }
+	
+	if(fread(newData.columns, 1, M, pFile) != M){
+    printf("ERROR => Reading information from file!!!\n");
+    fclose(pFile);
+    free(newData.rows);
+    free(newData.columns);
+    exit(-1); 
+  }
+	
+	newData.matrix = createMatrix(N,M);
+	newData.N = N;
+	newData.M = M;
 	
 	fclose(pFile);
 	
@@ -221,10 +240,8 @@ stack computeLCS(data lcs, stack seq){
 
 void print(data lcs, stack seq){
 	
-	putchar('\n');
 	printf("%d\n", lcs.matrix[lcs.N][lcs.M]);
 	display(seq);
-	putchar('\n');
 	
 	return;
 }
