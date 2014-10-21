@@ -63,10 +63,10 @@ typedef struct t_data{
 }data;
 
 int **createMatrix(int N, int M){
-	int i=0, j=0;
+	int i=0;
 	int **newM=NULL;
 	
-	newM = (int**)malloc((N+1)*sizeof(int*));
+	newM = (int**)calloc((N+1), sizeof(int*));
 	if(newM == NULL){
 		putchar('\n');
 		printf("ERROR => Creating Matrix!!!\n");
@@ -75,19 +75,12 @@ int **createMatrix(int N, int M){
 	}
 	
 	for(i=0; i<(N+1); i++){
-		newM[i] = (int*)malloc((M+1)*sizeof(int));
+		newM[i] = (int*)calloc((M+1),sizeof(int));
 		if(newM[i] == NULL){
 			putchar('\n');
 			printf("ERROR => Creating Matrix!!!\n");
 			putchar('\n');
 			exit(-1);
-		}
-	}
-	
-	/* Inicialização da Matriz */
-	for(i=0; i<(N+1); i++){
-		for(j=0; j<(M+1); j++){
-			newM[i][j] = 0;
 		}
 	}
 	
