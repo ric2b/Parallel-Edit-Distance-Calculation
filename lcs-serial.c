@@ -188,16 +188,12 @@ short cost(int x){
 data computeMatrix(data lcs){
 	int i=0, j=0;
 	
-	for(i=0; i<lcs.N + 1; i++){
-		for(j=0; j<lcs.M + 1; j++){
-			if(i == 0 || j == 0){
-				lcs.matrix[i][j] = 0;
+	for(i=1; i<lcs.N + 1; i++){
+		for(j=1; j<lcs.M + 1; j++){
+			if(lcs.rows[i-1] == lcs.columns[j-1]){
+				lcs.matrix[i][j] = lcs.matrix[i-1][j-1] + cost(j);/*function short cost*/
 			}else{
-				if(lcs.rows[i-1] == lcs.columns[j-1]){
-					lcs.matrix[i][j] = lcs.matrix[i-1][j-1] + cost(i);/*function short cost*/
-				}else{
-					lcs.matrix[i][j] = max(lcs.matrix[i][j-1], lcs.matrix[i-1][j]);
-				}
+				lcs.matrix[i][j] = max(lcs.matrix[i][j-1], lcs.matrix[i-1][j]);
 			}
 		}
 	}
