@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <omp.h>
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 
@@ -13,7 +14,7 @@ typedef struct t_stack{
 stack createStack(int sizeStack){
 	stack new;
 
-	new.st = (char*)malloc(sizeStack*sizeof(char));
+	new.st = (char*)calloc(sizeStack, sizeof(char));
 
 	if(new.st == NULL){
 		putchar('\n');
@@ -75,7 +76,7 @@ int **createMatrix(int N, int M){
 	}
 	
 	for(i=0; i<(N+1); i++){
-		newM[i] = (int*)calloc((M+1),sizeof(int));
+		newM[i] = (int*)calloc((M+1), sizeof(int));
 		if(newM[i] == NULL){
 			putchar('\n');
 			printf("ERROR => Creating Matrix!!!\n");
@@ -88,20 +89,14 @@ int **createMatrix(int N, int M){
 }
 
 char *createVector(int SIZE){
-	int i=0;
 	char *newV=NULL;
 	
-	newV = (char*)malloc(SIZE*sizeof(char));
+	newV = (char*)calloc(SIZE, sizeof(char));
 	if(newV == NULL){
 		putchar('\n');
 		printf("ERROR => Creating Vector!!!\n");
 		putchar('\n');
 		exit(-1);
-	}
-
-	/* Inicialização do Vector */
-	for(i=0; i<SIZE; i++){
-		newV[i] = '0';
 	}
 	
 	return newV;
@@ -191,7 +186,7 @@ data computeMatrix(data lcs){
 	for(i=1; i<lcs.N + 1; i++){
 		for(j=1; j<lcs.M + 1; j++){
 			if(lcs.rows[i-1] == lcs.columns[j-1]){
-				lcs.matrix[i][j] = lcs.matrix[i-1][j-1] + cost(j);/*function short cost*/
+				lcs.matrix[i][j] = lcs.matrix[i-1][j-1] + cost(i);/*function short cost*/
 			}else{
 				lcs.matrix[i][j] = max(lcs.matrix[i][j-1], lcs.matrix[i-1][j]);
 			}
@@ -254,7 +249,10 @@ int main(int argc, char *argv[]){
 	char *fname=NULL;
 	data lcs;
 	stack seq;
-	/* int i=0, j=0; */
+	double start=0, end=0;
+	/*int i=0, j=0; */
+	
+	start = omp_get_wtime();
 	
 	if(argc != 2){
 		putchar('\n');
@@ -282,6 +280,11 @@ int main(int argc, char *argv[]){
 	} */
 	
 	freeMem(lcs, seq);
+	
+	end = omp_get_wtime();
+	
+	putchar('\n');
+	printf("Time: %.5g\n", (end-start));
 	
 	exit(0);
 }
