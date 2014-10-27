@@ -43,14 +43,10 @@ int stempty(stack seq){
 void display(stack seq){
   int i=0;
    
-	if(stempty(seq)){ 
-  	printf("No Longest Common Subsequence Found!\n");
-  }else{
- 		for(i=seq.top; i>=0; i--){
-    	printf("%c", seq.st[i]);
-  	}
-  	putchar('\n');
-  }
+	for(i=seq.top; i>=0; i--){
+  	printf("%c", seq.st[i]);
+	}
+	putchar('\n');
   
   return;
 }
@@ -186,7 +182,7 @@ data computeMatrix(data lcs){
 	for(i=1; i<lcs.N + 1; i++){
 		for(j=1; j<lcs.M + 1; j++){
 			if(lcs.rows[i-1] == lcs.columns[j-1]){
-				lcs.matrix[i][j] = lcs.matrix[i-1][j-1] + cost(i);/*function short cost*/
+				lcs.matrix[i][j] = lcs.matrix[i-1][j-1] + cost(i); /*function short cost*/
 			}else{
 				lcs.matrix[i][j] = max(lcs.matrix[i][j-1], lcs.matrix[i-1][j]);
 			}
@@ -203,6 +199,12 @@ stack computeLCS(data lcs, stack seq){
 	j = lcs.M;
 	
 	sizeStack = lcs.matrix[i][j];
+	if(sizeStack == 0){
+		putchar('\n');
+		printf("No Longest Common Subsequence Found!!!\n");
+		putchar('\n');
+		exit(0);
+	}
 	seq = createStack(sizeStack);
 	
 	while(i != 0 && j != 0){
@@ -250,9 +252,8 @@ int main(int argc, char *argv[]){
 	data lcs;
 	stack seq;
 	double start=0, end=0;
-	/*int i=0, j=0; */
 	
-	start = omp_get_wtime();
+	start = omp_get_wtime(); 
 	
 	if(argc != 2){
 		putchar('\n');
@@ -271,20 +272,12 @@ int main(int argc, char *argv[]){
 	
 	print(lcs, seq);
 	
-	/* Impressão da Matriz */
-	/* for(i=0; i<lcs.N+1; i++){
-		for(j=0; j<lcs.M+1; j++){
-			printf("%d ", lcs.matrix[i][j]);
-		}
-		putchar('\n');
-	} */
-	
 	freeMem(lcs, seq);
 	
 	end = omp_get_wtime();
 	
 	putchar('\n');
-	printf("Time: %.5g\n", (end-start));
+	printf("Time: %.5g\n", (end-start)); 
 	
 	exit(0);
 }
