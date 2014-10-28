@@ -197,7 +197,7 @@ data computeMatrix(data lcs){
 		for(it = 0; it < (M+N); it++){
 			w1 = it < M ? 0 : it - M;
 			w2 = it < N ? 0 : it - N;
-			#pragma omp for schedule(static, chunk) firstprivate(chunk) private(k, i, j)
+			#pragma omp for private(k, i, j)
 			for(k=it-w2; k > w1; k--){
 				i = k;
 				j = (it-k)+1;
@@ -266,10 +266,10 @@ int main(int argc, char *argv[]){
 	char *fname=NULL;
 	data lcs;
 	stack seq;
-	double start=0, end=0;
+	/*double start=0, end=0;*/
 	/*int i=0, j=0;*/ 
 	
-	start = omp_get_wtime();
+	/*start = omp_get_wtime();*/
 	
 	if(argc != 2){
 		putchar('\n');
@@ -298,10 +298,10 @@ int main(int argc, char *argv[]){
 	
 	freeMem(lcs, seq);
 	
-	end = omp_get_wtime();
+	/*end = omp_get_wtime();*/
 	
-	putchar('\n');
-	printf("Time: %.5g\n", (end-start));
+	/*putchar('\n');
+	printf("Time: %.5g\n", (end-start));*/
 	
 	exit(0);
 }
