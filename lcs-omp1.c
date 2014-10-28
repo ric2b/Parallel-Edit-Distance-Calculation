@@ -202,7 +202,7 @@ data computeMatrix(data lcs){
 				i = k;
 				j = (it-k)+1;
 				if(lcs.rows[i-1] == lcs.columns[j-1]){
-					lcs.matrix[i][j] = lcs.matrix[i-1][j-1] + 1;
+					lcs.matrix[i][j] = lcs.matrix[i-1][j-1] + cost(i);
 				}else{
 					lcs.matrix[i][j] = max(lcs.matrix[i][j-1], lcs.matrix[i-1][j]);
 				}
@@ -266,10 +266,10 @@ int main(int argc, char *argv[]){
 	char *fname=NULL;
 	data lcs;
 	stack seq;
-	/*double start=0, end=0;*/
+	double start=0, end=0;
 	/*int i=0, j=0;*/ 
 	
-	/*start = omp_get_wtime();*/
+	start = omp_get_wtime();
 	
 	if(argc != 2){
 		putchar('\n');
@@ -298,10 +298,10 @@ int main(int argc, char *argv[]){
 	
 	freeMem(lcs, seq);
 	
-	/*end = omp_get_wtime();*/
+	end = omp_get_wtime();
 	
-	/*putchar('\n');
-	printf("Time: %.5g\n", (end-start));*/
+	putchar('\n');
+	printf("Time: %.5g\n", (end-start));
 	
 	exit(0);
 }
