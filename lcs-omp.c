@@ -1,17 +1,29 @@
+/***********************************************
+* Project: Longest Common Subsequence          *
+*                                              *
+* Course: Parallel Distributed Computing       *
+*	                                             *
+* Authors: Daniel Arrais, nº 69675             *
+*          Miguel Costa, nº 73359              *
+*          Ricardo Amendoeira, nº 73373			   *
+*                                              *
+* Version: OpenMP                              *
+************************************************/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <omp.h>
 
-#define max(a,b) (((a) > (b)) ? (a) : (b))
+#define max(a,b) (((a) > (b)) ? (a) : (b)) /* Retorna o máximo entre A e B */
 
-typedef struct t_stack{
+typedef struct t_stack{ /* Estrutura definida como pilha - Armazena a LCS */
 	char *st;
 	int top;
 }stack;
 
-stack createStack(int sizeStack){
+stack createStack(int sizeStack){ /* Aloca memória necessária para a estrutura pilha */
 	stack new;
 
 	new.st = (char*)calloc(sizeStack, sizeof(char));
@@ -28,19 +40,14 @@ stack createStack(int sizeStack){
 	return new;
 }
 
-stack push(stack seq, char item){
+stack push(stack seq, char item){ /* Insere novo elemento na pilha */
   seq.top++;
   seq.st[seq.top] = item;
   
 	return seq;
 }
 
-int stempty(stack seq){
-  if(seq.top == -1) return 1;
-  else return 0;
-}
-
-void display(stack seq){
+void display(stack seq){ /* Imprime os caractéres armazenas na pilha */
   int i=0;
    
 	for(i=seq.top; i>=0; i--){
@@ -51,7 +58,7 @@ void display(stack seq){
   return;
 }
 
-typedef struct t_data{
+typedef struct t_data{ /* Estrutura necessária para a computação da LCS */
 	unsigned short **matrix;
 	char *rows;
 	char *columns;
@@ -59,7 +66,7 @@ typedef struct t_data{
 	int M;
 }data;
 
-unsigned short **createMatrix(int N, int M){
+unsigned short **createMatrix(int N, int M){ /* Cria matriz */
 	int i=0;
 	unsigned short **newM=NULL;
 	
@@ -84,7 +91,7 @@ unsigned short **createMatrix(int N, int M){
 	return newM;
 }
 
-char *createVector(int SIZE){
+char *createVector(int SIZE){ /* Cria vector para armazenamento das sequências de caractéres */
 	char *newV=NULL;
 	
 	newV = (char*)calloc(SIZE, sizeof(char));
@@ -98,7 +105,7 @@ char *createVector(int SIZE){
 	return newV;
 }
 
-FILE *openFile(char *fname){
+FILE *openFile(char *fname){ /* Abre ficheiro de input */
 	FILE *fp=NULL;
 	
 	
@@ -113,7 +120,7 @@ FILE *openFile(char *fname){
 	return fp;
 }
 
-data readFile(char *fname){
+data readFile(char *fname){ /* Lê ficheiro de input e procede à sua descodificação */
 	int N=0, M=0;
 	FILE *pFile=NULL;
 	data newData;
@@ -165,7 +172,7 @@ data readFile(char *fname){
 	return newData;
 }
 
-void freeMem(data lcs, stack seq, int x){
+void freeMem(data lcs, stack seq, int x){ /* Liberta Memória */
 	int i=0;
 
 	if(x == 0) free(seq.st);
@@ -180,7 +187,7 @@ void freeMem(data lcs, stack seq, int x){
 	return;
 }
 
-short cost(int x){
+short cost(int x){ /* Função cost fornecida pelos professores */
 	int i=0, n_iter=20;
 	double dcost=0;
 	
@@ -191,7 +198,7 @@ short cost(int x){
 	return (short) (dcost / n_iter + 0.1);	
 }
 
-data computeMatrix(data lcs){
+data computeMatrix(data lcs){ /* Realiza a computação da matriz através das suas anti-diagonais */
 	int i=0, j=0, it=0, w1=0, w2=0, k=0;
 	int N=0, M=0;
 	
@@ -219,7 +226,7 @@ data computeMatrix(data lcs){
 	return lcs;
 }
 
-stack computeLCS(data lcs, stack seq){
+stack computeLCS(data lcs, stack seq){ /* Retorna a LCS, realizando um backtrack na matriz */
 	int i, j, sizeStack=0;
 	
 	i = lcs.N;
@@ -252,7 +259,7 @@ stack computeLCS(data lcs, stack seq){
 	return seq;
 }
 
-void print(data lcs, stack seq){
+void print(data lcs, stack seq){ /* Imprime o comprimento da LCS e a actual LCS */
 	
 	printf("%d\n", lcs.matrix[lcs.N][lcs.M]);
 	display(seq);
@@ -260,13 +267,13 @@ void print(data lcs, stack seq){
 	return;
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]){ /* MAIN */
 	char *fname=NULL;
 	data lcs;
 	stack seq;
-	double start=0, end=0;
+	/*double start=0, end=0;
 	
-	start = omp_get_wtime();
+	start = omp_get_wtime();*/
 	
 	if(argc != 2){
 		putchar('\n');
@@ -289,8 +296,8 @@ int main(int argc, char *argv[]){
 	
 	end = omp_get_wtime();
 	
-	putchar('\n');
-	printf("Time: %.5g\n", (end-start));
+	/*putchar('\n');
+	printf("Time: %.5g\n", (end-start));*/
 	
 	exit(0);
 }
