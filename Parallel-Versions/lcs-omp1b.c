@@ -56,18 +56,18 @@ void display(stack seq){
 }
 
 typedef struct t_data{
-	unsigned short **matrix;
+	int **matrix;
 	char *rows;
 	char *columns;
 	int N;
 	int M;
 }data;
 
-unsigned short **createMatrix(int N, int M){
+int **createMatrix(int N, int M){
 	int i=0;
-	unsigned short **newM=NULL;
+	int **newM=NULL;
 	
-	newM = (unsigned short**)calloc((N+1), sizeof(unsigned short*));
+	newM = (int**)calloc((N+1), sizeof(int*));
 	if(newM == NULL){
 		putchar('\n');
 		printf("ERROR => Creating Matrix!!!\n");
@@ -76,7 +76,7 @@ unsigned short **createMatrix(int N, int M){
 	}
 	
 	for(i=0; i<(N+1); i++){
-		newM[i] = (unsigned short*)calloc((M+1), sizeof(unsigned short));
+		newM[i] = (int*)calloc((M+1), sizeof(int));
 		if(newM[i] == NULL){
 			putchar('\n');
 			printf("ERROR => Creating Matrix!!!\n");
@@ -183,12 +183,14 @@ short cost(int x){
 data computeMatrix(data lcs){
 	int i=0, j=0, it=0, w1=0, w2=0, k=0;
 	int N=0, M=0;
+	int tid=0;
 	
 	N = lcs.N;
 	M = lcs.M;
 	
-	#pragma omp parallel firstprivate(N,M) private(it)
+	#pragma omp parallel firstprivate(N,M) private(it, tid)
 	{
+		tid = omp_get_thread_num();
 		for(it = 1; it < (M+N); it++){
 			w1 = it < M ? 0 : it - M;
 			w2 = it < N ? 0 : it - N;
@@ -266,10 +268,9 @@ int main(int argc, char *argv[]){
 	char *fname=NULL;
 	data lcs;
 	stack seq;
-	/*double start=0, end=0;*/
-	/*int i=0, j=0; */
+	double start=0, end=0;
 	
-	/*start = omp_get_wtime();*/
+	start = omp_get_wtime();
 	
 	if(argc != 2){
 		putchar('\n');
@@ -288,20 +289,12 @@ int main(int argc, char *argv[]){
 	
 	print(lcs, seq);
 	
-	/* Impressão da Matriz */
-	/* for(i=0; i<lcs.N+1; i++){
-		for(j=0; j<lcs.M+1; j++){
-			printf("%d ", lcs.matrix[i][j]);
-		}
-		putchar('\n');
-	} */
-	
 	freeMem(lcs, seq);
 	
-	/*end = omp_get_wtime();
+	end = omp_get_wtime();
 	
 	putchar('\n');
-	printf("Time: %.5g\n", (end-start));*/
+	printf("Time: %.5g\n", (end-start));
 	
 	exit(0);
 }

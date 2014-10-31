@@ -43,31 +43,27 @@ int stempty(stack seq){
 void display(stack seq){
   int i=0;
    
-	if(stempty(seq)){ 
-  	printf("No Longest Common Subsequence Found!\n");
-  }else{
- 		for(i=seq.top; i>=0; i--){
-    	printf("%c", seq.st[i]);
-  	}
-  	putchar('\n');
-  }
+	for(i=seq.top; i>=0; i--){
+  	printf("%c", seq.st[i]);
+	}
+	putchar('\n');
   
   return;
 }
 
 typedef struct t_data{
-	int **matrix;
+	unsigned short **matrix;
 	char *rows;
 	char *columns;
 	int N;
 	int M;
 }data;
 
-int **createMatrix(int N, int M){
+unsigned short **createMatrix(int N, int M){
 	int i=0;
-	int **newM=NULL;
+	unsigned short **newM=NULL;
 	
-	newM = (int**)calloc((N+1), sizeof(int*));
+	newM = (unsigned short**)calloc((N+1), sizeof(unsigned short*));
 	if(newM == NULL){
 		putchar('\n');
 		printf("ERROR => Creating Matrix!!!\n");
@@ -76,7 +72,7 @@ int **createMatrix(int N, int M){
 	}
 	
 	for(i=0; i<(N+1); i++){
-		newM[i] = (int*)calloc((M+1), sizeof(int));
+		newM[i] = (unsigned short*)calloc((M+1), sizeof(unsigned short));
 		if(newM[i] == NULL){
 			putchar('\n');
 			printf("ERROR => Creating Matrix!!!\n");
@@ -169,6 +165,21 @@ data readFile(char *fname){
 	return newData;
 }
 
+void freeMem(data lcs, stack seq, int x){
+	int i=0;
+
+	if(x == 0) free(seq.st);
+	
+	for(i=0; i<lcs.N+1; i++){
+		free(lcs.matrix[i]);
+	}
+	free(lcs.matrix);
+	free(lcs.rows);
+	free(lcs.columns);
+
+	return;
+}
+
 short cost(int x){
 	int i=0, n_iter=20;
 	double dcost=0;
@@ -183,14 +194,12 @@ short cost(int x){
 data computeMatrix(data lcs){
 	int i=0, j=0, it=0, w1=0, w2=0, k=0;
 	int N=0, M=0;
-	int tid=0;
 	
 	N = lcs.N;
 	M = lcs.M;
 	
-	#pragma omp parallel firstprivate(N,M) private(it, tid)
+	#pragma omp parallel firstprivate(N,M) private(it)
 	{
-		tid = omp_get_thread_num();
 		for(it = 1; it < (M+N); it++){
 			w1 = it < M ? 0 : it - M;
 			w2 = it < N ? 0 : it - N;
@@ -217,6 +226,13 @@ stack computeLCS(data lcs, stack seq){
 	j = lcs.M;
 	
 	sizeStack = lcs.matrix[i][j];
+	if(sizeStack == 0){
+		putchar('\n');
+		printf("No Longest Common Subsequence Found!!!\n");
+		putchar('\n');
+		freeMem(lcs, seq, 1);
+		exit(0);
+	}
 	seq = createStack(sizeStack);
 	
 	while(i != 0 && j != 0){
@@ -244,27 +260,11 @@ void print(data lcs, stack seq){
 	return;
 }
 
-void freeMem(data lcs, stack seq){
-	int i=0;
-
-	free(seq.st);
-	
-	for(i=0; i<lcs.N+1; i++){
-		free(lcs.matrix[i]);
-	}
-	free(lcs.matrix);
-	free(lcs.rows);
-	free(lcs.columns);
-
-	return;
-}
-
 int main(int argc, char *argv[]){
 	char *fname=NULL;
 	data lcs;
 	stack seq;
 	double start=0, end=0;
-	/*int i=0, j=0;*/ 
 	
 	start = omp_get_wtime();
 	
@@ -285,15 +285,7 @@ int main(int argc, char *argv[]){
 	
 	print(lcs, seq);
 	
-	/* Impressão da Matriz */
-	/*for(i=0; i<lcs.N+1; i++){
-		for(j=0; j<lcs.M+1; j++){
-			printf("%d ", lcs.matrix[i][j]);
-		}
-		putchar('\n');
-	}*/
-	
-	freeMem(lcs, seq);
+	freeMem(lcs, seq, 0);
 	
 	end = omp_get_wtime();
 	

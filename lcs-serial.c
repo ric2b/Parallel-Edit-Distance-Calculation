@@ -165,6 +165,21 @@ data readFile(char *fname){
 	return newData;
 }
 
+void freeMem(data lcs, stack seq, int x){
+	int i=0;
+
+	if(x == 0) free(seq.st);
+	
+	for(i=0; i<lcs.N+1; i++){
+		free(lcs.matrix[i]);
+	}
+	free(lcs.matrix);
+	free(lcs.rows);
+	free(lcs.columns);
+
+	return;
+}
+
 short cost(int x){
 	int i=0, n_iter=20;
 	double dcost=0;
@@ -203,6 +218,7 @@ stack computeLCS(data lcs, stack seq){
 		putchar('\n');
 		printf("No Longest Common Subsequence Found!!!\n");
 		putchar('\n');
+		freeMem(lcs, seq, 1);
 		exit(0);
 	}
 	seq = createStack(sizeStack);
@@ -232,21 +248,6 @@ void print(data lcs, stack seq){
 	return;
 }
 
-void freeMem(data lcs, stack seq){
-	int i=0;
-
-	free(seq.st);
-	
-	for(i=0; i<lcs.N+1; i++){
-		free(lcs.matrix[i]);
-	}
-	free(lcs.matrix);
-	free(lcs.rows);
-	free(lcs.columns);
-
-	return;
-}
-
 int main(int argc, char *argv[]){
 	char *fname=NULL;
 	data lcs;
@@ -272,7 +273,7 @@ int main(int argc, char *argv[]){
 	
 	print(lcs, seq);
 	
-	freeMem(lcs, seq);
+	freeMem(lcs, seq, 0);
 	
 	end = omp_get_wtime();
 	
