@@ -294,9 +294,9 @@ int main(int argc, char *argv[]){ /* MAIN */
 	
 	freeMem(lcs, seq, 0);
 	
-	end = omp_get_wtime();
+	/* end = omp_get_wtime();
 	
-	/*putchar('\n');
+	putchar('\n');
 	printf("Time: %.5g\n", (end-start));*/
 	
 	exit(0);
