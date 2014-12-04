@@ -1,16 +1,64 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <math.h>
 #include <mpi.h>
 
 #define max(a,b) (((a) > (b)) ? (a) : (b)) /*Retorna o máximo entre A e B*/
-#define min(a,b) (((a) < (b)) ? (a) : (b)) /*Retorna o mínimo entre A e B*/
 
 int id=0, p=0;
 int *chunkN=NULL, *chunkM=NULL;
 MPI_Status status;
 int gN=0, gM=0;
+int sizeLCS=0;
+
+typedef struct t_stack{ /* Estrutura definida como pilha - Armazena a LCS */
+	char *st;
+	int top;
+}stack;
+
+stack createStack(int sizeStack){ /* loca memória necessária para a estrutura pilha*/
+	stack new;
+
+	new.st = (char*)calloc(sizeStack, sizeof(char));
+	if(new.st == NULL){
+		printf("\n[ERROR] Creating Stack\n\n");
+		exit(-1);
+	}
+	
+	new.top = -1;
+	
+	return new;
+}
+
+stack reallocStack(stack seq, int count){
+
+	seq.st = (char*)realloc(seq.st, count*sizeof(char));
+	if(seq.st == NULL){
+		printf("\n[ERROR] Reallocating memory for stack\n\n");
+		exit(-1);
+	}
+	
+	return seq;
+}
+
+stack push(stack seq, char item, int x){ /*Insere novo elemento na pilha*/
+  seq.top=x;
+  
+  seq.st[seq.top] = item;
+  
+	return seq;
+}
+
+void display(stack seq){ /*Imprime os caractéres armazenas na pilha*/
+  int i=0;
+   
+	for(i=seq.top; i>=0; i--){
+  	printf("%c", seq.st[i]);
+	}
+	putchar('\n');
+  
+  return;
+}
 
 typedef struct t_data{ /*Estrutura necessária para a computação da LCS*/
 	int **matrix;
@@ -115,68 +163,59 @@ data readFile(char *fname){ /* Lê ficheiro de input e procede à sua descodific
  	MPI_Bcast(&gN, 1, MPI_INT, 0, MPI_COMM_WORLD);
  	MPI_Bcast(&gM, 1, MPI_INT, 0, MPI_COMM_WORLD);
  	
- 	if((gN/p) <= 1.5 || (gM/p) <= 1.5){
- 		p=min(gN,gM)/1.5;
- 		if(!id) printf("\n[WARNING] The program will only run with %d machines\n\n", p);
- 	}
- 	
- 	if(id < p){
-	 	/*Calculate Chunks*/
-	 	chunkN = defineChunk(gN);
-	 	chunkM = defineChunk(gM);
-		
-		if(!id){
-			int aux=0;
-			char *rows=NULL;
-			
-			rows = createVector(gN);
-		
-			if(fread(rows, 1, gN, pFile) != gN){
-		  	printf("\n[ERROR] Reading information from file\n\n");
-		  	free(rows);	
-		  	fclose(pFile);
-		  	MPI_Finalize();
-		  	exit(-1); 
-			}
-			if(fscanf(pFile, "\n") != 0){
-				printf("\n[ERROR] Reading EOF from file\n\n");
-				free(rows);
-				fclose(pFile);
-				MPI_Finalize();
-				exit(-1);
-			}
+ 	/*Cálculo do chunk relativo a cada processo*/
+ 	chunkN = defineChunk(gN);
+ 	chunkM = defineChunk(gM);
 	
-			newData.columns = createVector(gM);
+	if(!id){
+		int aux=0;
+		char *rows=NULL;
 		
-			if(fread(newData.columns, 1, gM, pFile) != gM){
-				printf("\n[ERROR] Reading information from file\n\n");
-				free(rows);
-				free(newData.columns);
-				fclose(pFile);
-				MPI_Finalize();
-				exit(-1); 
-			}
-			for(j=0; j<p; j++){ /*Cada máquina apenas necessita parte da string correspondente às linhas - incluíndo o "Master"*/
-				aux+=chunkN[j-1];
-				MPI_Send(&(rows[aux]), chunkN[j], MPI_CHAR, j, j, MPI_COMM_WORLD);	
-			}
+		rows = createVector(gN);
+	
+		if(fread(rows, 1, gN, pFile) != gN){
+	  	printf("\n[ERROR] Reading information from file\n\n");
+	  	free(rows);	
+	  	fclose(pFile);
+	  	MPI_Finalize();
+	  	exit(-1); 
+		}
+		if(fscanf(pFile, "\n") != 0){
+			printf("\n[ERROR] Reading EOF from file\n\n");
 			free(rows);
+			fclose(pFile);
+			MPI_Finalize();
+			exit(-1);
 		}
-		
-		newData.rows = createVector(chunkN[id]);
-		if(id){
-			newData.columns = createVector(gM);
+
+		newData.columns = createVector(gM);
+	
+		if(fread(newData.columns, 1, gM, pFile) != gM){
+			printf("\n[ERROR] Reading information from file\n\n");
+			free(rows);
+			free(newData.columns);
+			fclose(pFile);
+			MPI_Finalize();
+			exit(-1); 
 		}
-		
-		MPI_Recv(&(newData.rows[0]), chunkN[id], MPI_CHAR, 0, id, MPI_COMM_WORLD, &status);
-		/*Todas as máquinas precisam de toda a string correspondente às colunas*/
-		MPI_Bcast(&(newData.columns[0]), gM, MPI_CHAR, 0, MPI_COMM_WORLD);
-		
-		/*Cada máquina terá a sua própria matriz de dimensões (chunkN[id]+1)x(M+1)*/
-		newData.matrix = createMatrix(chunkN[id], gM);
-  
-  	if(!id) fclose(pFile);
-  }
+		for(j=0; j<p; j++){ /*Cada máquina apenas necessita parte da string correspondente às linhas - incluíndo o "Master"*/
+			MPI_Send(&(rows[aux]), chunkN[j], MPI_CHAR, j, j, MPI_COMM_WORLD);
+			aux+=chunkN[j];	
+		}
+		free(rows);
+	}
+	
+	newData.rows = createVector(chunkN[id]);
+	if(id) newData.columns = createVector(gM);
+	
+	MPI_Recv(&(newData.rows[0]), chunkN[id], MPI_CHAR, 0, id, MPI_COMM_WORLD, &status);
+	/*Todas as máquinas precisam de toda a string correspondente às colunas*/
+	MPI_Bcast(&(newData.columns[0]), gM, MPI_CHAR, 0, MPI_COMM_WORLD);
+	
+	/*Cada máquina terá a sua própria matriz de dimensões (chunkN[id]+1)x(M+1)*/
+	newData.matrix = createMatrix(chunkN[id], gM);
+
+	if(!id) fclose(pFile);
   
 	return newData;
 }
@@ -210,8 +249,7 @@ int **computeMatrix(data lcs, int N, int M, int mj){ /* Realiza a computação d
 }
 
 data distributeMatrix(data lcs){
-	int k=0, nj=0, idN=0, idM=0, aux=0;
-	int i=0;
+	int k=0, nj=0, idN=0, idM=0;
 	
 	for(k=0; k < (2*p)-1; k++){
 		if(k < p){ /*Aumento da carga de trabalho*/ 
@@ -261,7 +299,93 @@ data distributeMatrix(data lcs){
 	return lcs;
 }
 
-void freeMem(data lcs){
+stack computeLCS(data lcs, stack seq, int *flag){
+	int i=0, j=0, k=0, count=0, t=0;
+	int *ij=NULL;
+	MPI_Request request;
+	
+	if(id == p-1){
+		i=chunkN[id];
+		j=gM;
+		sizeLCS = lcs.matrix[i][j];
+		MPI_Isend(&sizeLCS, 1, MPI_INT, 0, id, MPI_COMM_WORLD, &request);
+	}
+	
+	if(!id){
+		MPI_Recv(&sizeLCS, 1, MPI_INT, p-1, p-1, MPI_COMM_WORLD, &status);
+		seq = createStack(sizeLCS);
+	}
+	
+	ij=(int*)calloc(2, sizeof(int));
+	if(ij == NULL){
+		printf("\n[ERROR] Allocating memory in function computeLCS(data,stack,int)\n\n");
+		MPI_Finalize(); 
+		exit(-1);
+	}
+	ij[0]=gN;
+	ij[1]=gM;
+	
+	k=p;
+	
+	while(ij[0] != 0 && ij[1] != 0){
+		
+		k--;
+		count=0;
+		
+		if(k == id){
+			i=chunkN[id];
+			j=ij[1];
+			while(i != 0 && j != 0){
+				if(lcs.rows[i-1] == lcs.columns[j-1]){
+					count++;
+					(*flag)=1;
+					
+					if(id){ 
+						if(count==1) seq = createStack(count);
+						if(count>1)  seq = reallocStack(seq, count);
+					}
+					
+					if(!id && count==1) count+=t;
+					
+					seq=push(seq, lcs.rows[i-1], count-1);
+					
+					i=i-1;
+					j=j-1;
+				}else{
+					if(lcs.matrix[i][j-1] >= lcs.matrix[i-1][j]){
+						j=j-1;
+					}else{
+						i=i-1;
+					}
+				}
+			}
+			if(!id && i==0) ij[0]=0; /*Apenas o processo 0 pode obter i=0*/
+			ij[1]=j;
+			if(id){
+				MPI_Send(&count, 1, MPI_INT, 0, k, MPI_COMM_WORLD);
+				MPI_Send(&(seq.st[0]), count, MPI_CHAR, 0, k, MPI_COMM_WORLD);
+			}
+		}
+		
+		if(!id){
+			if(ij[0] != 0 && ij[1] != 0){
+				MPI_Recv(&count, 1, MPI_INT, k, k, MPI_COMM_WORLD, &status);
+				MPI_Recv(&(seq.st[t]), count, MPI_CHAR, k, k, MPI_COMM_WORLD, &status);
+			}
+			t+=count;
+		}
+		
+		MPI_Bcast(&ij[0], 2, MPI_INT, k, MPI_COMM_WORLD);
+	}
+	
+	free(ij);
+			
+	return seq;
+}
+
+void freeMem(data lcs, stack seq, int flag){
+	
+	if(flag == 1) free(seq.st);
 	
 	/*Libertart memória alocada para a matriz de cada máquina*/
 	free(lcs.matrix[0]);
@@ -274,15 +398,20 @@ void freeMem(data lcs){
 	return;
 }
 
+void print(stack seq){ /* Imprime o comprimento da LCS e a actual LCS */
+	
+	printf("%d\n", sizeLCS);
+	display(seq);
+	
+	return;
+}
+
 int main(int argc, char *argv[]){
-	int tid=0;
-	/*int i=0;*/
-	int i=0, j=0;
-	double start=0, end=0;
+	int flag=0;
 	char *fname=NULL;
 	data lcs;
+	stack seq;
 	
-	start = MPI_Wtime();
 	MPI_Init(&argc, &argv);
 	
 	MPI_Comm_rank(MPI_COMM_WORLD, &id);
@@ -291,46 +420,25 @@ int main(int argc, char *argv[]){
 	if(argc != 2){
 		if(!id) printf("\n[ERROR] Missing initial arguments\n\n");
 		MPI_Finalize();
-		exit(0);
+		exit(-1);
 	}
 	
-	/*Leitura do ficheiro / Cálculo do Chunk relativo a cada Máquina*/
+	/*Leitura do ficheiro*/
 	if(!id) fname = argv[1];
 	
 	lcs = readFile(fname);
+
+	lcs = distributeMatrix(lcs); /*Computação da matriz*/
 	
-	/*Computação da matriz*/
-	if(id < p) lcs = distributeMatrix(lcs);
+	MPI_Barrier(MPI_COMM_WORLD);
+		
+	seq = computeLCS(lcs, seq, &flag); /*Obtenção da maior subsequência comum*/
 	
-	/*Critical Section for printing the whole Matrix*/
-	tid=0;
-	while(tid < p){
-		if(id < p){
-			if(id == tid){
-				if(!id){
-					for(j=0; j<gM+1; j++){
-						printf("%d ", lcs.matrix[0][j]);			
-					}
-					putchar('\n');
-				}
-				for(i=1; i<chunkN[id]+1; i++){
-					for(j=0; j<gM+1; j++){
-						printf("%d ", lcs.matrix[i][j]);			
-					}
-					putchar('\n');
-				}
-			}
-		}
-		tid++;
-		MPI_Barrier(MPI_COMM_WORLD);
-	}
+	if(!id) print(seq); /*Impressão do resultado*/
 	
-	if(id < p) freeMem(lcs);
+	freeMem(lcs, seq, flag); /*Libertação da memória alocada*/
 	
 	MPI_Finalize();
-	end = MPI_Wtime();
-	
-	if(!id) printf("\nTime: %.5g\n\n", (end-start));
 	
 	exit(0);
 }
