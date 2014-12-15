@@ -2,10 +2,10 @@
 * Project: Longest Common Subsequence          *
 *                                              *
 * Course: Parallel Distributed Computing       *
-*	                                             *
+*	                                           *
 * Authors: Daniel Arrais, nº 69675             *
 *          Miguel Costa, nº 73359              *
-*          Ricardo Amendoeira, nº 73373			   *
+*          Ricardo Amendoeira, nº 73373		   *
 *                                              *
 * Version: Sequential                          *
 ************************************************/
@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <mpi.h>
+
 
 #define max(a,b) (((a) > (b)) ? (a) : (b)) /* Retorna o máximo entre A e B */
 
@@ -259,9 +259,6 @@ int main(int argc, char *argv[]){ /* MAIN */
 	char *fname=NULL;
 	data lcs;
 	stack seq;
-	double start=0, end=0;
-	
-	start=MPI_Wtime();
 	
 	if(argc != 2){
 		putchar('\n');
@@ -281,9 +278,6 @@ int main(int argc, char *argv[]){ /* MAIN */
 	print(lcs, seq);
 	
 	freeMem(lcs, seq, 0);
-	
-	end=MPI_Wtime();
-	printf("\nTime: %.5g\n\n", (end-start));
 	
 	exit(0);
 }

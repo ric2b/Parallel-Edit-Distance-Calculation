@@ -271,6 +271,9 @@ int main(int argc, char *argv[]){ /* MAIN */
 	char *fname=NULL;
 	data lcs;
 	stack seq;
+	/*double start=0, end=0;
+	
+	start = omp_get_wtime();*/
 	
 	if(argc != 2){
 		putchar('\n');
@@ -290,6 +293,11 @@ int main(int argc, char *argv[]){ /* MAIN */
 	print(lcs, seq);
 	
 	freeMem(lcs, seq, 0);
+	
+	end = omp_get_wtime();
+	
+	/*putchar('\n');
+	printf("Time: %.5g\n", (end-start));*/
 	
 	exit(0);
 }

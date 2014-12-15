@@ -1,7 +1,20 @@
+/***********************************************
+* Project: Longest Common Subsequence          *
+*                                              *
+* Course: Parallel Distributed Computing       *
+*	                                             *
+* Authors: Daniel Arrais, nº 69675             *
+*          Miguel Costa, nº 73359              *
+*          Ricardo Amendoeira, nº 73373			   *
+*                                              *
+* Version: MPI+OMP                             *
+************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
+#include <omp.h>
 
 #define max(a,b) (((a) > (b)) ? (a) : (b)) /*Retorna o máximo entre A e B*/
 
@@ -32,7 +45,7 @@ stack createStack(int sizeStack){
 	return new;
 }
 
-/*Aloca memória necessária para a LCS obtida por cada processo*/
+/*Realoca memória necessária para a estrutura pilha para cada processo, excepto o 0*/
 stack reallocStack(stack seq, int count){
 
 	seq.st = (char*)realloc(seq.st, count*sizeof(char));
@@ -54,7 +67,7 @@ stack push(stack seq, char item, int x){
 	return seq;
 }
 
-/*Imprime os caractéres armazenas na pilha*/
+/*Imprime os caractéres armazenados na pilha*/
 void display(stack seq){ 
   int i=0;
    
@@ -114,7 +127,7 @@ char *createVector(int SIZE){
 	return newV;
 }
 
-/*Cálculo dos "chunks"*/
+/*Calcula o tamanho do bloco correspondente a cada processo*/
 int *defineChunk(int DIM, int ft){
 	int *aux=NULL;
 	int i=0;
@@ -126,9 +139,9 @@ int *defineChunk(int DIM, int ft){
 		exit(-1);
 	}
 	
-	if((DIM % (ft*p)) == 0){
+	if((DIM % (ft*p)) == 0){ /*Se DIM/(ft*p) for uma divisão inteira, cada processo fica com o mesmo chunk*/
 		for(i=0; i<p; i++) aux[i]=DIM/(ft*p);
-	}else{
+	}else{ /*Caso contrário, cada processo fica com (DIM/(ft*p))+1 excepto o processo p-1 que fica com o restante*/
 		for(i=0; i<(p-1); i++) aux[i] = (DIM/(ft*p))+1;
 		aux[p-1] = (DIM - ((ft*p)-1)*((DIM/(ft*p))+1));
 	}
@@ -155,10 +168,10 @@ data readFile(char *fname){
 	FILE *pFile=NULL;
 	data newData;
 	
-	if(!id){
+	if(!id){ /*Apenas o processo 0 tem acesso ao ficheiro*/
 		pFile = openFile(fname);
 		
-		if(fscanf(pFile, "%d %d", &gN, &gM) != 2){
+		if(fscanf(pFile, "%d %d", &gN, &gM) != 2){ /*Leitura do tamanho das strings (N,M)*/
     	printf("\n[ERROR] Reading variables from the input file\n\n");
     	fclose(pFile);
     	MPI_Finalize();
@@ -171,11 +184,13 @@ data readFile(char *fname){
     	exit(-1);
   	}
 	}
+	/*Todos os processos têm conhecimento do tamanho total das strings de caractéres*/
 	MPI_Bcast(&gN, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&gM, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	
-	chunkN=defineChunk(gN, 1);
-	chunkM=defineChunk(gM, log10(gM));
+	/*Todos os processos têm conhecimento dos chunks designados a cada processo*/
+	chunkN=defineChunk(gN, 1); /*As linhas da matriz são divididas, de forma geral, em N/p*/
+	chunkM=defineChunk(gM, log10(gM)); /*As colunas da matriz são divididas de acordo com a ordem de grandeza da varíavel M, M/(log10(M)*p)*/
 	
 	if(!id){
 		int aux=0, j=0;
@@ -183,7 +198,7 @@ data readFile(char *fname){
 		
 		rows = createVector(gN);
 	
-		if(fread(rows, 1, gN, pFile) != gN){
+		if(fread(rows, 1, gN, pFile) != gN){ /*Leitura da string de tamanho N*/
 	  	printf("\n[ERROR] Reading information from file\n\n");
 	  	free(rows);	
 	  	fclose(pFile);
@@ -200,7 +215,7 @@ data readFile(char *fname){
 
 		newData.columns = createVector(gM);
 	
-		if(fread(newData.columns, 1, gM, pFile) != gM){
+		if(fread(newData.columns, 1, gM, pFile) != gM){ /*Leitura da string de tamanho M*/
 			printf("\n[ERROR] Reading information from file\n\n");
 			free(rows);
 			free(newData.columns);
@@ -208,15 +223,15 @@ data readFile(char *fname){
 			MPI_Finalize();
 			exit(-1); 
 		}
-		for(j=0; j<p; j++){
-			MPI_Send(&(rows[aux]), chunkN[j], MPI_CHAR, j, j, MPI_COMM_WORLD);
+		for(j=0; j<p; j++){ /*Cada processo apenas necessita de parte da string de tamanho N*/
+			MPI_Send(&(rows[aux]), chunkN[j], MPI_CHAR, j, j, MPI_COMM_WORLD); /*Envio da informação correspondente a cada*/
 			aux+=chunkN[j];	
 		}
 		free(rows);
 	}
 	
-	newData.rows = createVector(chunkN[id]);
-	if(id) newData.columns = createVector(gM);
+	newData.rows = createVector(chunkN[id]); /*Cria vector de tamanho chunkN[id] - armazena parte da string de tamanho N*/
+	if(id) newData.columns = createVector(gM); /*Cria vector de tamanho M - armazena toda a string de tamanho M*/
 	
 	/*Cada processo só precisa de parte da string correspondente às linhas*/
 	MPI_Recv(&(newData.rows[0]), chunkN[id], MPI_CHAR, 0, id, MPI_COMM_WORLD, &status);
@@ -322,6 +337,7 @@ data distributeMatrix(data lcs, int ft){
 	return lcs;
 }
 
+/*Retorna a LCS, realizando um traceback na matriz*/
 stack computeLCS(data lcs, stack seq, int *flag){
 	MPI_Request request;
 	int i=0, j=0, k=0, count=0, t=0;
@@ -331,12 +347,13 @@ stack computeLCS(data lcs, stack seq, int *flag){
 		i=chunkN[id];
 		j=gM;
 		sizeLCS = lcs.matrix[i][j];
+		/*O processo p-1 envia para o processo 0 o actual tamanho da LCS*/
 		MPI_Isend(&sizeLCS, 1, MPI_INT, 0, id, MPI_COMM_WORLD, &request);
 	}
 	
 	if(!id){
 		MPI_Recv(&sizeLCS, 1, MPI_INT, p-1, p-1, MPI_COMM_WORLD, &status);
-		seq = createStack(sizeLCS);
+		seq = createStack(sizeLCS); /*O processo 0 aloca memória necessária para a LCS*/
 	}
 	
 	ij=(int*)calloc(2, sizeof(int));
@@ -350,27 +367,27 @@ stack computeLCS(data lcs, stack seq, int *flag){
 	
 	k=p;
 	
-	while(ij[0] != 0 && ij[1] != 0){
+	while(ij[0] != 0 && ij[1] != 0){ /*Enquanto nenhum processo atingir a coluna 0 ou a linha 0*/
 		
 		k--;
 		count=0;
 		
-		if(k == id){
+		if(k == id){ /*Cada processo vai sendo chamado decrescentemente: o processo p-1 é o primeiro, depois o p-2, e assim sucessivamente*/
 			i=chunkN[id];
 			j=ij[1];
-			while(i != 0 && j != 0){
-				if(lcs.rows[i-1] == lcs.columns[j-1]){
+			while(i != 0 && j != 0){ /*Enquanto não atingir a linha i=0 ou a coluna j=0 da sua matriz*/
+				if(lcs.rows[i-1] == lcs.columns[j-1]){ /*Caso haja um match*/
 					count++;
 					(*flag)=1;
 					
-					if(id){ 
+					if(id){ /*À excepção do processo 0, os restantes vão alocando memória para a pilha à medida que necessitam*/
 						if(count==1) seq = createStack(count);
 						if(count>1)  seq = reallocStack(seq, count);
 					}
 					
 					if(!id && count==1) count+=t;
 					
-					seq=push(seq, lcs.rows[i-1], count-1);
+					seq=push(seq, lcs.rows[i-1], count-1); /*Insere novo elemento na pilha*/
 					
 					i=i-1;
 					j=j-1;
@@ -383,21 +400,22 @@ stack computeLCS(data lcs, stack seq, int *flag){
 				}
 			}
 			if(!id && i==0) ij[0]=0; /*Apenas o processo 0 pode obter i=0*/
-			ij[1]=j;
-			if(id){
+			ij[1]=j; /*Ponto de partida para o próximo processo*/
+			if(id){ /*Cada processo, após calcular a parte da LCS correspondente ao seu bloco, envia esta para o processo 0*/
 				MPI_Send(&count, 1, MPI_INT, 0, k, MPI_COMM_WORLD);
 				MPI_Send(&(seq.st[0]), count, MPI_CHAR, 0, k, MPI_COMM_WORLD);
 			}
 		}
 		
 		if(!id){
-			if(ij[0] != 0 && ij[1] != 0){
+			if(ij[0] != 0 && ij[1] != 0){ /*O processo 0 vai concatenando as LCS calculadas por cada um dos processos*/
 				MPI_Recv(&count, 1, MPI_INT, k, k, MPI_COMM_WORLD, &status);
 				MPI_Recv(&(seq.st[t]), count, MPI_CHAR, k, k, MPI_COMM_WORLD, &status);
 			}
 			t+=count;
 		}
 		
+		/*Cada processo precisa de se situar relativamente à linha e coluna do total da matriz*/
 		MPI_Bcast(&ij[0], 2, MPI_INT, k, MPI_COMM_WORLD);
 	}
 	
@@ -406,6 +424,7 @@ stack computeLCS(data lcs, stack seq, int *flag){
 	return seq;
 }
 
+/*Liberta memória alocada*/
 void freeMem(data lcs, stack seq, int flag){
 	
 	if(flag == 1) free(seq.st);
@@ -421,7 +440,8 @@ void freeMem(data lcs, stack seq, int flag){
 	return;
 }
 
-void print(stack seq){ /* Imprime o comprimento da LCS e a actual LCS */
+/*Imprime o resultado final*/
+void print(stack seq){ 
 	
 	printf("%d\n", sizeLCS);
 	display(seq);
@@ -429,10 +449,10 @@ void print(stack seq){ /* Imprime o comprimento da LCS e a actual LCS */
 	return;
 }
 
+/*MAIN*/
 int main(int argc, char *argv[]){
 	char *fname=NULL;
 	int flag=0;
-	int i=0;
 	data lcs;
 	stack seq;
 	
